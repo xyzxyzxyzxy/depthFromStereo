@@ -1,20 +1,27 @@
 import numpy as np
 import cv2 as cv
 import glob
+import sys
 
-square_sz = 25 #25mm
-p_size = (7, 5)
+if len(sys.argv) < 2:
+    print("Calibration images directory name required")
+    sys.exit()
+
+DIR = sys.argv[1]
+
+SQUARE_SIZE = 0.025 #meters
+PATTERN_SIZE = (7, 5)
 
 #termination criteria
 crit = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-objp = np.zeros((p_size[0]*p_size[1], 3), np.float32) #points in world coordinates [X, Y, Z]
-objp[:, :2] = np.mgrid[0:p_size[0], 0:p_size[1]].T.reshape(-1, 2)*square_sz
+objp = np.zeros((PATTERN_SIZE[0]*PATTERN_SIZE[1], 3), np.float32) #points in world coordinates [X, Y, Z]
+objp[:, :2] = np.mgrid[0:PATTERN_SIZE[0], 0:PATTERN_SIZE[1]].T.reshape(-1, 2)*SQUARE_SIZE
 
 objectpoints = [] #stores vectors of points for ALL the calibration images
 imagepoints = []
 
-imgs = glob.glob("./CalibrationImages1/*jpg") #directory with images of the calibration pattern
+imgs = glob.glob(DIR+"/*jpg") #directory with images of the calibration pattern
 
 goodImgcount = 0
 
@@ -22,12 +29,11 @@ for fname in imgs:
     #read and convert to grayscale
     img = cv.imread(fname)
     #resize
-    img = cv.resize(img,(0, 0),fx=0.12, fy=0.12, interpolation = cv.INTER_AREA)
-    print(img.shape)
+    img = cv.resize(img,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
 
     #hsv mask
     img_hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-    lwr = np.array([0, 0, 143])
+    lwr = np.array([0, 0, 100])
     upr = np.array([179, 61, 252])
     msk = cv.inRange(img_hsv, lwr, upr)
 
@@ -41,7 +47,7 @@ for fname in imgs:
     print(f"searching for corners in image: {fname}")
 
     #find corners
-    ret, corners = cv.findChessboardCorners(np.uint8(pattern), p_size, None)
+    ret, corners = cv.findChessboardCorners(np.uint8(pattern), PATTERN_SIZE, None)
 
     print(f"corners found: {ret}")
     
@@ -50,7 +56,7 @@ for fname in imgs:
         ref_corners = cv.cornerSubPix(pattern, corners, (11, 11), (-1, -1), crit)
         imagepoints.append(ref_corners)
         #ret is passed from the find corners function to understand if the whole board was found or not
-        cv.drawChessboardCorners(img, p_size, ref_corners, ret)
+        cv.drawChessboardCorners(img, PATTERN_SIZE, ref_corners, ret)
         cv.imshow('corners', img)
         cv.waitKey(30)
         goodImgcount = goodImgcount + 1
@@ -86,12 +92,11 @@ print("total # of px: ", w*h)
 pxsize = sensor[0]/w
 pysize = sensor[1]/h
 
-#print(f"size of pixel px: {pxsize}, size of pixel py: {pysize}")
+print(f"size of pixel px: {pxsize}, size of pixel py: {pysize}")
+fx = mat[0, 0]*pxsize
+fy = mat[1, 1]*pysize
 
-# fx = mat[0, 0]*pxsize
-# fy = mat[1, 1]*pysize
-
-# print(f"estimated focal length fx: {fx}, fy: {fy}")
+print(f"estimated focal length fx: {fx}, fy: {fy}")
 
 print("# of good images: ", goodImgcount)
 
