@@ -1,46 +1,81 @@
 import numpy as np
 import cv2 as cv
 import sys
+from os.path import exists
 
-if len(sys.argv) < 2:
-    print("Stereo pair index required")
-    sys.exit()
+REPROJECT_TO_3D = 1
 
-INDEX = int(sys.argv[1])
+if len(sys.argv) == 3:
+    REPROJECT_TO_3D = 0
+    fleft = sys.argv[1]
+    fright = sys.argv[2]
+    rectLeftRoi_color = cv.imread(fleft)
+    rectRightRoi_color = cv.imread(fright)
+    rectLeftRoi_color = cv.resize(rectLeftRoi_color,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
+    rectRightRoi_color = cv.resize(rectLeftRoi_color,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
+    rectLeftRoi = cv.cvtColor(rectLeftRoi_color, cv.COLOR_BGR2GRAY)
+    rectRightRoi = cv.cvtColor(rectLeftRoi_color, cv.COLOR_BGR2GRAY)
+elif len(sys.argv) > 1:
+    INDEX = int(sys.argv[1])
+    fname = "stereoData" + str(INDEX) + ".npz"
 
-fname = "stereoData" + str(INDEX) + ".npz"
-data = np.load(fname)
-Q = data['Q']
-roiL = data['roiL']
-roiR = data['roiR']
+    if not exists(fname):
+        print("epipolarGeometry.py needs to run first, ensure that the corresponding stereoData[idx].npz file has been generated.")
+        sys.exit()
 
-print(f"getting depth map from file: {fname}")
+    data = np.load(fname)
+    Q = data['Q']
+    roiL = data['roiL']
+    roiR = data['roiR']
 
-print(f"Q:\n{Q}")
-print(f"roiL:\n{roiL}")
-print(f"roiR:\n{roiR}")
+    print(f"getting depth map from file: {fname}")
 
-xl, yl, wl, hl = roiL
-xr, yr, wr, hr = roiR
+    print(f"Q:\n{Q}")
+    print(f"roiL:\n{roiL}")
+    print(f"roiR:\n{roiR}")
 
-rectifiedLeft = cv.imread('rectifiedLeft.jpg', cv.IMREAD_GRAYSCALE)
-rectifiedRight = cv.imread('rectifiedRight.jpg', cv.IMREAD_GRAYSCALE)
-rectifiedLeft_color = cv.imread('rectifiedLeft_c.jpg')
-rectifiedRight_color = cv.imread('rectifiedRight_c.jpg')
-# rectifiedLeft_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
-# rectifiedRight_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
+    xl, yl, wl, hl = roiL
+    xr, yr, wr, hr = roiR
 
-if np.any(roiL) and np.any(roiR):
-    rectLeftRoi = rectifiedLeft[xl:xl+hl, yl:yl + wl]
-    rectRightRoi = rectifiedRight[xr:xr+hr, yr:yr + wr]
-    rectLeftRoi_color = rectifiedLeft_color[xl:xl+hl, yl:yl + wl]
-    rectRightRoi_color = rectifiedRight_color[xr:xr+hr, yr:yr + wr]
+    rectifiedLeft = cv.imread('rectifiedLeft.jpg', cv.IMREAD_GRAYSCALE)
+    rectifiedRight = cv.imread('rectifiedRight.jpg', cv.IMREAD_GRAYSCALE)
+    rectifiedLeft_color = cv.imread('rectifiedLeft_c.jpg')
+    rectifiedRight_color = cv.imread('rectifiedRight_c.jpg')
+    # rectifiedLeft_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
+    # rectifiedRight_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
+
+    if np.any(roiL) and np.any(roiR):
+        rectLeftRoi = rectifiedLeft[xl:xl+hl, yl:yl + wl]
+        rectRightRoi = rectifiedRight[xr:xr+hr, yr:yr + wr]
+        rectLeftRoi_color = rectifiedLeft_color[xl:xl+hl, yl:yl + wl]
+        rectRightRoi_color = rectifiedRight_color[xr:xr+hr, yr:yr + wr]
+    else:
+        rectLeftRoi = rectifiedLeft
+        rectRightRoi = rectifiedRight
+        rectLeftRoi_color = rectifiedLeft_color
+        rectRightRoi_color = rectifiedRight_color
+
+    #make sure that the two rectified images have same size
+    if rectLeftRoi.shape < rectRightRoi.shape:
+        print("Left rectified smaller than right, resizing right")
+        h = np.min([rectLeftRoi.shape[0], rectRightRoi.shape[0]])
+        w = np.min([rectLeftRoi.shape[1], rectRightRoi.shape[1]])
+        rectRightRoi = cv.resize(rectRightRoi, (w, h), cv.INTER_AREA)
+        rectRightRoi_color = cv.resize(rectRightRoi_color, (w, h), cv.INTER_AREA)
+    elif rectLeftRoi.shape > rectRightRoi.shape:
+        print("Right rectified smaller than left, resizing left")
+        h = np.min([rectLeftRoi.shape[0], rectRightRoi.shape[0]])
+        w = np.min([rectLeftRoi.shape[1], rectRightRoi.shape[1]])
+        rectLeftRoi = cv.resize(rectLeftRoi, (w, h), cv.INTER_AREA)
+        rectLeftRoi_color = cv.resize(rectLeftRoi_color, (w, h), cv.INTER_AREA)
+    else:
+        pass
+ 
+    print(f"size rectLeftRoi:\n{rectLeftRoi.shape}")
+    print(f"size rectRightRoi:\n{rectRightRoi.shape}")
 else:
-    rectLeftRoi = rectifiedLeft
-    rectRightRoi = rectifiedRight
-    rectLeftRoi_color = rectifiedLeft_color
-    rectRightRoi_color = rectifiedRight_color
-
+    print("Either a stereo pair index or the path to two images has to be provided")
+    sys.exit()
 
 #STEREO BLOCK MATCHING USING STEREOBM
 def nothing(x):
@@ -49,7 +84,7 @@ def nothing(x):
 cv.namedWindow('disp',cv.WINDOW_NORMAL)
 cv.resizeWindow('disp',600,80)
  
-cv.createTrackbar('numDisparities','disp',1,17,nothing)
+cv.createTrackbar('numDisparities','disp',1,15,nothing) #this is multiplied by 16
 cv.createTrackbar('blockSize','disp',5,50,nothing)
 cv.createTrackbar('preFilterType','disp',1,1,nothing)
 cv.createTrackbar('preFilterSize','disp',2,25,nothing)
@@ -132,5 +167,6 @@ end_header
     append_ply_array(out_points, out_colors)
     write_ply()
 
-color = rectLeftRoi_color #whatever left or rigtht is good ROI
-create_pointcloud(disparity, Q, color)
+if REPROJECT_TO_3D:
+    color = rectLeftRoi_color #whatever left or rigtht is good ROI
+    create_pointcloud(disparity, Q, color)

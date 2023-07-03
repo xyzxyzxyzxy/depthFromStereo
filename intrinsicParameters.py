@@ -28,6 +28,7 @@ goodImgcount = 0
 for fname in imgs:
     #read and convert to grayscale
     img = cv.imread(fname)
+
     #resize
     img = cv.resize(img,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
 
@@ -69,13 +70,21 @@ ret, mat, dist, rvecs, tvecs = cv.calibrateCamera(objectpoints, imagepoints, gra
 
 #compute reprojection error
 mean_error = 0
+error = np.zeros(len(objectpoints))
 for i in range(len(objectpoints)):
-        #projection of the given points using found intrinsic/extrinsic param
-    imagepoints2, _ = cv.projectPoints(objectpoints[i], rvecs[i], tvecs[i], mat, dist)
-    error = cv.norm(imagepoints[i], imagepoints2, cv.NORM_L2)/len(imagepoints2)
-    mean_error = mean_error + error
+    #projection of the given points using found intrinsic/extrinsic param
+    #new projected points using objectpoints (original) rotation matrices and translation vectors, intrinsic matrix and distortion coefficients
+    #computed by calibrateCamera
+    imagepoints2,  _ = cv.projectPoints(objectpoints[i], rvecs[i], tvecs[i], mat, dist)
+    error[i] = cv.norm(imagepoints[i], imagepoints2, cv.NORM_L2)/len(imagepoints2)
+    mean_error = mean_error + error[i]
 
-print(f"\ntotal reprojection error: {mean_error}\n")
+print(f"\ntotal reprojection error: {mean_error/len(objectpoints)}\n")
+print(f"Reprojection error for each image:")
+for i in range(len(objectpoints)):
+    print(f"reprojection error for image {i}: {error[i]}")
+    if error[i] > 0.06:
+        print(f"Inspect {imgs[i]} has a reprojection error > 0.06")
 print(f"Intrinsic parameters: \n{mat}")
 print(f"Distortion coeff: \n{dist}")
 

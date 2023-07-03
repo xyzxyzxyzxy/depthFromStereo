@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 import sys
 
 SHOW_EPILINES = 1
-CORRECT_LENS_DISTORTION = 0
+CORRECT_LENS_DISTORTION = 1
 CHECK_EPIPOLAR_CONSTRAINT = 1
+EQ_HIST = 0
 
 if len(sys.argv) < 2:
     print("Stereo pair index required")
@@ -15,18 +16,20 @@ if len(sys.argv) < 2:
 
 INDEX = int(sys.argv[1])
 
+#load stereo pair with index INDEX
 filename = "./StereoPairs/*{:01d}.JPG".format(INDEX)
 stereo_pair = glob.glob(filename)
+
 print(f"Loading stereo pair: {stereo_pair}")
 data = np.load("intrinsicParameters.npz")
-K = np.float32(data['K'])
-dist = np.float32(data['dist'])
+K = data['K']
+dist = data['dist']
 w = int(data['w'])
 h = int(data['h'])
 
-print("\nintrinsic parameter matrix: \n", K)
-print("\ndistortion coefficients: \n", dist)
-print("\nimage_size: \n", w, h)
+print("\nIntrinsic parameter matrix: \n", K)
+print("\nDistortion coefficients: \n", dist)
+print("Image_size: \n", w, h)
 
 stereo = []
 stereo_color = []
@@ -36,14 +39,21 @@ for fname in stereo_pair:
     img_color = cv.cvtColor(img_color, cv.COLOR_BGR2RGB)
     img_color = cv.resize(img_color, (w, h), interpolation = cv.INTER_AREA)
     img_gray = cv.cvtColor(img_color, cv.COLOR_BGR2GRAY)
-    dst = cv.equalizeHist(img_gray)
+    if EQ_HIST:
+        dst = cv.equalizeHist(img_gray)
+    else:
+        dst = img_gray
     if CORRECT_LENS_DISTORTION:
-        dst, _ = undistort.undistort(dst, K, dist)
+        dst, newmat = undistort.undistort(dst, K, dist)
         print(f"shape after undistortion using intrinsic parameters: {dst.shape}")
     stereo.append(dst)
     stereo_color.append(img_color)
     cv.imshow(fname, dst)
     cv.waitKey(0)
+
+
+K = newmat
+print("\nNew Intrinsic parameter matrix: \n", K)
 
 imright = stereo[0]
 imleft = stereo[1]
@@ -51,6 +61,8 @@ imright_color = stereo_color[0]
 imleft_color = stereo_color[1]
 
 h, w = imright.shape #new height and with of both images
+
+print(f"imright type: {imright.dtype}")
 
 #use sift to get keypoints
 sift = cv.SIFT_create()
@@ -122,7 +134,7 @@ if SHOW_EPILINES:
     # print(f"lines1 lenght: {l1.shape}, #of points right image: {pts2.shape}")
     # print(f"lines2 lenght: {l2.shape}, #of points left image: {pts1.shape}")
 
-#check quality
+#CHECK QUALITY USING EPIPOLAR CONSTRAINT
 if CHECK_EPIPOLAR_CONSTRAINT:
     ptl = np.copy(pts1)
     ptr = np.copy(pts2)
@@ -130,7 +142,8 @@ if CHECK_EPIPOLAR_CONSTRAINT:
     ptr = np.concatenate((ptr, np.ones((ptr.shape[0], 1))), 1)
     error = (ptr @ F @ ptl.T) + (ptl @ F @ ptr.T)
     nFrames = 2
-    print(f"\nTotal error: {np.sum(np.sum(np.abs(error)))/(nFrames*(pts2.shape[0]))}")
+    print(error)
+    print(f"\nTotal error: {np.sum(np.sum(np.abs(error)))/(nFrames*(ptl.shape[0]))}")
 
 #get essential matrix from fundamental matrix
 E = K.T @ F @ K
@@ -163,8 +176,8 @@ print(f"Q: \n{Q}")
 xl, yl, wl, hl = roiL
 xr, yr, wr, hr = roiR
 
-print(roiL)
-print(roiR)
+print("roiL values: ", roiL)
+print("roiR values: ", roiR)
 
 mapxL, mapyL = cv.initUndistortRectifyMap(K, dist, rectLeft, projectionLeft, (w, h), cv.CV_32FC1)
 mapxR, mapyR = cv.initUndistortRectifyMap(K, dist, rectRight, projectionRight, (w, h), cv.CV_32FC1)
