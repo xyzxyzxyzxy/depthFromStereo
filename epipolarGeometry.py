@@ -208,8 +208,8 @@ cv.waitKey(0)
 cv.destroyAllWindows()
 
 fname = "stereoData" + str(INDEX) + ".npz"
-cv.imwrite('rectifiedleft.jpg', rectifiedLeft)
+cv.imwrite('rectifiedLeft.jpg', rectifiedLeft)
 cv.imwrite('rectifiedRight.jpg', rectifiedRight)
-cv.imwrite('rectifiedleft_c.jpg', rectifiedLeft_color)
+cv.imwrite('rectifiedLeft_c.jpg', rectifiedLeft_color)
 cv.imwrite('rectifiedRight_c.jpg', rectifiedRight_color)
 np.savez(fname, F=F, E=E, R1=R1, t=t, Q=Q, roiL=roiL, roiR=roiR)
