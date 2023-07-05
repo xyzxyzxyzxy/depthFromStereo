@@ -17,7 +17,8 @@ if len(sys.argv) < 2:
 INDEX = int(sys.argv[1])
 
 #load stereo pair with index INDEX
-filename = "./StereoPairs/*{:01d}.JPG".format(INDEX)
+filename = "./StereoPairs/*{:02d}.JPG".format(INDEX)
+print(filename)
 stereo_pair = glob.glob(filename)
 
 print(f"Loading stereo pair: {stereo_pair}")
@@ -120,7 +121,7 @@ if SHOW_EPILINES:
     epi_left, epi_leftc = drawlines(imleft, imright, l1, pts1, pts2)
 
 
-    l2 = cv.computeCorrespondEpilines(pts1.reshape(-1,1,2), 1, F)
+    l2 = cv.computeCorrespondEpilines(pts1.reshape(-1, 1, 2), 1, F)
     l2 = l2.reshape(-1, 3)
     epi_right, epi_rightc = drawlines(imright, imleft, l2, pts2, pts1)
 
@@ -140,10 +141,17 @@ if CHECK_EPIPOLAR_CONSTRAINT:
     ptr = np.copy(pts2)
     ptl = np.concatenate((ptl, np.ones((ptl.shape[0], 1))), 1)
     ptr = np.concatenate((ptr, np.ones((ptr.shape[0], 1))), 1)
-    error = (ptr @ F @ ptl.T) + (ptl @ F @ ptr.T)
-    nFrames = 2
-    print(error)
-    print(f"\nTotal error: {np.sum(np.sum(np.abs(error)))/(nFrames*(ptl.shape[0]))}")
+
+    error = 0
+    for i in range(ptl.shape[0]):
+        error = error + np.abs(ptl[i, :] @ F @ ptr[i, :].T) + np.abs(ptr[i, :] @ F @ ptl[i, :].T)
+    print(f"\nTotal error: {error/((ptl.shape[0]))}")
+
+    error_epi = 0
+    for i in range(ptl.shape[0]):
+        error_epi = error_epi + np.abs(ptl[i, 0]* l2[i, 0] + ptl[i, 1]* l2[i, 1] + ptl[i, 2] * l2[i, 2]) +\
+            np.abs(ptr[i, 0]* l1[i, 0] + ptr[i, 1]* l1[i, 1] + ptr[i, 2] * l1[i, 2])
+    print(f"\nTotal error epilines: {error_epi/((ptl.shape[0]))}")
 
 #get essential matrix from fundamental matrix
 E = K.T @ F @ K
@@ -163,7 +171,7 @@ print(f"\nR1: {R1}, \nR2: {R2}, \nt: {t}")
 
 #STEREORECTIFY
 rectLeft, rectRight, projectionLeft, projectionRight, Q, roiL, roiR = cv.stereoRectify(K, dist, K, dist, 
-                                                                                       (w, h), R1, t, 
+                                                                                       (w, h), R2, t, 
                                                                                        None, None, None, None, None, 
                                                                                        cv.CALIB_ZERO_DISPARITY, 1, (0, 0))
 
@@ -201,9 +209,9 @@ else:
     rectRightRoi_color = rectifiedRight_color
 
 #show grayscale rectified images
-cv.imshow('rectL', rectLeftRoi)
+cv.imshow('rectL', rectifiedLeft)
 cv.waitKey(0)
-cv.imshow('rectR', rectRightRoi)
+cv.imshow('rectR', rectifiedRight)
 cv.waitKey(0)
 cv.destroyAllWindows()
 

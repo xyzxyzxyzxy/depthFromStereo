@@ -43,36 +43,6 @@ elif len(sys.argv) > 1:
     rectifiedRight_color = cv.imread('rectifiedRight_c.jpg')
     # rectifiedLeft_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
     # rectifiedRight_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
-
-    if np.any(roiL) and np.any(roiR):
-        rectLeftRoi = rectifiedLeft[xl:xl+hl, yl:yl + wl]
-        rectRightRoi = rectifiedRight[xr:xr+hr, yr:yr + wr]
-        rectLeftRoi_color = rectifiedLeft_color[xl:xl+hl, yl:yl + wl]
-        rectRightRoi_color = rectifiedRight_color[xr:xr+hr, yr:yr + wr]
-    else:
-        rectLeftRoi = rectifiedLeft
-        rectRightRoi = rectifiedRight
-        rectLeftRoi_color = rectifiedLeft_color
-        rectRightRoi_color = rectifiedRight_color
-
-    #make sure that the two rectified images have same size
-    if rectLeftRoi.shape < rectRightRoi.shape:
-        print("Left rectified smaller than right, resizing right")
-        h = np.min([rectLeftRoi.shape[0], rectRightRoi.shape[0]])
-        w = np.min([rectLeftRoi.shape[1], rectRightRoi.shape[1]])
-        rectRightRoi = cv.resize(rectRightRoi, (w, h), cv.INTER_AREA)
-        rectRightRoi_color = cv.resize(rectRightRoi_color, (w, h), cv.INTER_AREA)
-    elif rectLeftRoi.shape > rectRightRoi.shape:
-        print("Right rectified smaller than left, resizing left")
-        h = np.min([rectLeftRoi.shape[0], rectRightRoi.shape[0]])
-        w = np.min([rectLeftRoi.shape[1], rectRightRoi.shape[1]])
-        rectLeftRoi = cv.resize(rectLeftRoi, (w, h), cv.INTER_AREA)
-        rectLeftRoi_color = cv.resize(rectLeftRoi_color, (w, h), cv.INTER_AREA)
-    else:
-        pass
- 
-    print(f"size rectLeftRoi:\n{rectLeftRoi.shape}")
-    print(f"size rectRightRoi:\n{rectRightRoi.shape}")
 else:
     print("Either a stereo pair index or the path to two images has to be provided")
     sys.exit()
@@ -100,7 +70,7 @@ sbm = cv.StereoBM.create(numDisparities=64, blockSize=5)
 disparity = 0
 
 while True:
-    disparity = sbm.compute(rectLeftRoi, rectRightRoi).astype(np.float32)/16.0
+    disparity = sbm.compute(rectifiedLeft, rectifiedRight).astype(np.float32)/16.0
 
     numDisparities = cv.getTrackbarPos('numDisparities','disp')*16
     blockSize = cv.getTrackbarPos('blockSize','disp')*2 + 5
@@ -168,5 +138,5 @@ end_header
     write_ply()
 
 if REPROJECT_TO_3D:
-    color = rectLeftRoi_color #whatever left or rigtht is good ROI
+    color = rectifiedLeft_color #whatever left or rigtht is good
     create_pointcloud(disparity, Q, color)
