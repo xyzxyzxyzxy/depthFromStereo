@@ -8,14 +8,15 @@ Currently the project is structured in 3 main python files that need to run in a
 
 2. `epipolarGeometry.py index` where _index_ will be the index of the stereo pair located by default in the directory `./stereoPairs/` (e.g use `epipolarGeometry.py 10` if you want to use stereo pair `./StereoPairs/L10.jpg ./StereoPairs/R10.jpg`). This writes the parameters that will be used to create the disparity to a file called `stereoDataX.npz` in the root directory where **X** is the index of the pair given as input.
 
-        The file contains:
+    The file contains:
 
-        1. The estimated fundamental matrix using matching pairs of keypoints found in the two images by SIFT.
-        2. The essential matrix obtained from the fundamental matrix and the intrinsic paramters matrix (found by intrinsicParameters.py)
-        3. Rotation matrix **R1** and translation vector **t** (obtained using SVD on the essential matrix)
-        4. The (4x4) matrix **Q** used later for reprojection (see opencv documentation cv::reprojectTo3D and cv::stereoRectify)
-        4. The dimensions of the Regions of Interest output to be applied to the rectified images
-
+    1. The estimated fundamental matrix using matching pairs of keypoints found in the two images by SIFT.
+    2. The essential matrix obtained from the fundamental matrix and the intrinsic paramters matrix (found by intrinsicParameters.py)
+    3. Rotation matrix **R1** and translation vector **t** (obtained using SVD on the essential matrix)
+    4. The (4x4) matrix **Q** used later for reprojection (see opencv documentation cv::reprojectTo3D and cv::stereoRectify)
+    4. The dimensions of the Regions of Interest output to be applied to the rectified images
+    
+    \
     It also writes a rectified version of both shots in order to be able to perform stereo Block matching in a simpler way later. The four written files are two color rectified images of the two shots used, and their respective grayscale version. These are visible in the root directory as `rectified[Left | Right]_c.jpg` and `rectfified[Left | Right].jpg`.
     Sometimes rectification does not work with matrix **R1**, one of the two matrices returned by SVD, a solution can be to substitute **R1** with **R2**.
 
