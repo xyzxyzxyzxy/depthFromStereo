@@ -8,7 +8,7 @@ import sys
 SHOW_EPILINES = 1
 CORRECT_LENS_DISTORTION = 1
 CHECK_EPIPOLAR_CONSTRAINT = 1
-EQ_HIST = 0
+DRAW_MATCHES = 1
 
 if len(sys.argv) < 2:
     print("Stereo pair index required")
@@ -22,6 +22,8 @@ print(filename)
 stereo_pair = glob.glob(filename)
 
 print(f"Loading stereo pair: {stereo_pair}")
+print(f"Loading intrinsic parameters")
+
 data = np.load("intrinsicParameters.npz")
 K = data['K']
 dist = data['dist']
@@ -39,17 +41,13 @@ for fname in stereo_pair:
     img_color = cv.imread(fname)
     img_color = cv.cvtColor(img_color, cv.COLOR_BGR2RGB)
     img_color = cv.resize(img_color, (w, h), interpolation = cv.INTER_AREA)
-    img_gray = cv.cvtColor(img_color, cv.COLOR_BGR2GRAY)
-    if EQ_HIST:
-        dst = cv.equalizeHist(img_gray)
-    else:
-        dst = img_gray
+    img_gray = cv.cvtColor(img_color, cv.COLOR_RGB2GRAY)
     if CORRECT_LENS_DISTORTION:
-        dst, newmat = undistort.undistort(dst, K, dist)
-        print(f"shape after undistortion using intrinsic parameters: {dst.shape}")
-    stereo.append(dst)
-    stereo_color.append(img_color)
-    cv.imshow(fname, dst)
+        undist, newmat = undistort.undistort(img_gray, K, dist)
+        print(f"Shape after undistortion using intrinsic parameters: {undist.shape}")
+    stereo.append(undist)
+    stereo_color.append(img_color) #Not undistorted
+    cv.imshow(fname, undist)
     cv.waitKey(0)
 
 
@@ -65,7 +63,7 @@ h, w = imright.shape #new height and with of both images
 
 print(f"imright type: {imright.dtype}")
 
-#use sift to get keypoints
+#use sift to get keypoints and descriptors
 sift = cv.SIFT_create()
 kp1, des1 = sift.detectAndCompute(imleft, None)
 kp2, des2 = sift.detectAndCompute(imright, None)
@@ -80,11 +78,29 @@ matches = flann.knnMatch(des1, des2, k=2)
 pts1 = []
 pts2 = []
 
+ratio_thresh = 0.8
+
+matchesMask = [[0,0] for i in range(len(matches))]
+
+draw_params = dict(
+    #matchColor = (0,255,80),
+    #singlePointColor = (120,0,255),
+    matchesMask = matchesMask,
+    flags = cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+ )
+
 for i, (m, n) in enumerate(matches):
     #print(f"i: {i}, n: {n}, m: {m}")
-    if m.distance < 0.8*n.distance:
+    if m.distance < ratio_thresh*n.distance:
         pts2.append(kp2[m.trainIdx].pt)
         pts1.append(kp1[m.queryIdx].pt)
+        matchesMask[i] = [1, 0]
+
+if DRAW_MATCHES:
+    plt.figure(figsize=(12,7))
+    im_matches = cv.drawMatchesKnn(imleft,kp1,imright,kp2,matches,None,**draw_params)
+    plt.imshow(im_matches,)
+    plt.show()
 
 pts1 = np.int32(pts1)
 pts2 = np.int32(pts2)
@@ -125,7 +141,7 @@ if SHOW_EPILINES:
     l2 = l2.reshape(-1, 3)
     epi_right, epi_rightc = drawlines(imright, imleft, l2, pts2, pts1)
 
-    fig, ax = plt.subplots(1, 2, figsize=(10,8))
+    fig, ax = plt.subplots(1, 2, figsize=(12,7))
     ax[0].imshow(epi_left)
     ax[1].imshow(epi_right)
     plt.show()
@@ -171,7 +187,7 @@ print(f"\nR1: {R1}, \nR2: {R2}, \nt: {t}")
 
 #STEREORECTIFY
 rectLeft, rectRight, projectionLeft, projectionRight, Q, roiL, roiR = cv.stereoRectify(K, dist, K, dist, 
-                                                                                       (w, h), R2, t, 
+                                                                                       (w, h), R1, t, 
                                                                                        None, None, None, None, None, 
                                                                                        cv.CALIB_ZERO_DISPARITY, 1, (0, 0))
 

@@ -30,7 +30,7 @@ for fname in imgs:
     img = cv.imread(fname)
 
     #resize
-    img = cv.resize(img,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
+    img = cv.resize(img,(0, 0),fx=0.2, fy=0.2, interpolation = cv.INTER_AREA)
 
     #hsv mask
     img_hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
