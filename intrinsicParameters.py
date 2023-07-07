@@ -84,7 +84,7 @@ print(f"Reprojection error for each image:")
 for i in range(len(objectpoints)):
     print(f"reprojection error for image {i}: {error[i]}")
     if error[i] > 0.06:
-        print(f"Inspect {imgs[i]} has a reprojection error > 0.06")
+        print(f"Warning: {imgs[i]} has a reprojection error > 0.06")
 print(f"Intrinsic parameters: \n{mat}")
 print(f"Distortion coeff: \n{dist}")
 

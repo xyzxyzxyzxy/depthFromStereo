@@ -11,6 +11,7 @@ CHECK_EPIPOLAR_CONSTRAINT = 1
 DRAW_MATCHES = 1
 SHOW_ROIS = 0
 BRUTE_FORCE_MATCHING = 0 # IF SET TO 0 FLANN IS USED
+USE_R1 = 1
 
 if len(sys.argv) < 2:
     print("Stereo pair index required")
@@ -193,20 +194,33 @@ E = K.T @ F @ K
 print(f"\nEssential matrix: \n{E}")
 
 R1, R2, t, = cv.decomposeEssentialMat(E)
-print(f"\nR1: {R1}, \nR2: {R2}, \nt: {t}")
 
 #DEBUG
 # print(t.shape)
 # print(R1.shape)
 # t[1:3] = 0
 # t[0] = 1
-# R1 = np.eye(3)
+# t[1] = 0
+# R1 = np.zeros((3, 3))
+# theta = np.deg2rad(5)
+# R1[0, 0] = np.cos(theta)
+# R1[0, 2] = -np.sin(theta)
+# R1[1, 1] = 1
+# R1[2, 0] = np.sin(theta)
+# R1[2, 2] = np.cos(theta)
 # print("DEBUG T: ", t)
 # print("DEBUG R1: ", R1)
 
+print(f"\nR1: {R1}, \nR2: {R2}, \nt: {t}")
+
+if USE_R1:
+    R = R1
+else:
+    R = R2
+
 #STEREORECTIFY
 rectLeft, rectRight, projectionLeft, projectionRight, Q, roiL, roiR = cv.stereoRectify(K, dist, K, dist, 
-                                                                                       (w, h), R2, t, 
+                                                                                       (w, h), R, t, 
                                                                                        None, None, None, None, None, 
                                                                                        cv.CALIB_ZERO_DISPARITY, 1, (0, 0))
 
