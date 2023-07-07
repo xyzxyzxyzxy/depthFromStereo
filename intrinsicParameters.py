@@ -54,7 +54,7 @@ for fname in imgs:
     
     if ret == True:
         objectpoints.append(objp) #these [X, Y, Z] are the same for all images! Pattern does not move
-        ref_corners = cv.cornerSubPix(pattern, corners, (11, 11), (-1, -1), crit)
+        ref_corners = cv.cornerSubPix(pattern, corners, (21, 21), (-1, -1), crit)
         imagepoints.append(ref_corners)
         #ret is passed from the find corners function to understand if the whole board was found or not
         cv.drawChessboardCorners(img, PATTERN_SIZE, ref_corners, ret)
@@ -67,7 +67,7 @@ for fname in imgs:
 #now the calibration
 gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 ret, mat, dist, rvecs, tvecs = cv.calibrateCamera(objectpoints, imagepoints, gray.shape[::-1], None, None)
-
+print("\nRMS:", ret)
 #compute reprojection error
 mean_error = 0
 error = np.zeros(len(objectpoints))

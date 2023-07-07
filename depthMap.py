@@ -9,12 +9,12 @@ if len(sys.argv) == 3:
     REPROJECT_TO_3D = 0
     fleft = sys.argv[1]
     fright = sys.argv[2]
-    rectLeftRoi_color = cv.imread(fleft)
-    rectRightRoi_color = cv.imread(fright)
-    rectLeftRoi_color = cv.resize(rectLeftRoi_color,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
-    rectRightRoi_color = cv.resize(rectLeftRoi_color,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
-    rectLeftRoi = cv.cvtColor(rectLeftRoi_color, cv.COLOR_BGR2GRAY)
-    rectRightRoi = cv.cvtColor(rectLeftRoi_color, cv.COLOR_BGR2GRAY)
+    rectifiedLeft_color = cv.imread(fleft)
+    rectifiedRight_color = cv.imread(fright)
+    #rectifiedLeft_color = cv.resize(rectifiedLeft_color,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
+    #rectifiedRight_color = cv.resize(rectifiedRight_color,(0, 0),fx=0.15, fy=0.15, interpolation = cv.INTER_AREA)
+    rectifiedLeft = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2GRAY)
+    rectifiedRight = cv.cvtColor(rectifiedRight_color, cv.COLOR_BGR2GRAY)
 elif len(sys.argv) > 1:
     INDEX = int(sys.argv[1])
     fname = "stereoData" + str(INDEX) + ".npz"
@@ -96,7 +96,11 @@ while True:
     sbm.setDisp12MaxDiff(disp12MaxDiff)
     sbm.setMinDisparity(minDisparity)
 
-    cv.imshow('normalizedDisparity', (disparity-minDisparity)/numDisparities)
+
+    #disp = ((disparity-minDisparity)/numDisparities)
+    disp = cv.normalize(disparity, None, 255, 0, cv.NORM_MINMAX, cv.CV_8U)
+    disp = cv.applyColorMap(disp, cv.COLORMAP_INFERNO)
+    cv.imshow('normalizedDisparity', disp)
     if cv.waitKey(10) == 27:
         break
 
