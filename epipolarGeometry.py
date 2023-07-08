@@ -7,20 +7,21 @@ import sys
 import getopt
 
 INDEX = None
-SHOW_EPILINES = 1
-CORRECT_LENS_DISTORTION = 1
-CHECK_EPIPOLAR_CONSTRAINT = 1
-DRAW_MATCHES = 1
+SHOW_EPILINES = 0
+CORRECT_LENS_DISTORTION = 0
+CHECK_EPIPOLAR_CONSTRAINT = 0
+DRAW_MATCHES = 0
 SHOW_ROIS = 0
 BRUTE_FORCE_MATCHING = 0
-USE_R1 = 1
+RX = None
+nMatches = 100
 
 try:
     optlist, args = getopt.getopt(sys.argv[1:], 'r:', ['index=', 'show-epi', 'undistort', 
                                                         'check-epi', 
                                                         'show-matches',
                                                         'show-rois',
-                                                        'bruteforce'])
+                                                        'bruteforce='])
 except:
     print('unexpected argument')
     sys.exit()
@@ -43,6 +44,10 @@ for opt, arg in optlist:
         SHOW_ROIS = 1
     elif opt in ['--bruteforce']:
         BRUTE_FORCE_MATCHING = 1
+        try:
+            nMatches = int(arg)
+        except (ValueError, TypeError):
+            nMatches = 100
     elif opt in ['-r']:
         RX = int(arg)
 
@@ -77,16 +82,16 @@ for fname in stereo_pair:
     img_color = cv.resize(img_color, (w, h), interpolation = cv.INTER_AREA)
     img_gray = cv.cvtColor(img_color, cv.COLOR_RGB2GRAY)
     if CORRECT_LENS_DISTORTION:
-        undist, newmat = undistort.undistort(img_gray, K, dist)
-        print(f"Shape after undistortion using intrinsic parameters: {undist.shape}")
-    stereo.append(undist)
-    stereo_color.append(img_color) #Not undistorted
-    cv.imshow(fname, undist)
+        img_gray, newmat = undistort.undistort(img_gray, K, dist)
+        img_color, _ = undistort.undistort(img_color, K, dist)
+        print(f"Shape after undistortion using intrinsic parameters: {img_gray.shape}")
+        print(f"Shape after undistortion using intrinsic parameters (color): {img_color.shape}")
+        K = newmat
+        print("\nNew Intrinsic parameter matrix: \n", K)
+    stereo.append(img_gray)
+    stereo_color.append(img_color)
+    cv.imshow(fname, img_gray)
     cv.waitKey(0)
-
-
-K = newmat
-print("\nNew Intrinsic parameter matrix: \n", K)
 
 imright = stereo[0]
 imleft = stereo[1]
@@ -109,7 +114,7 @@ if BRUTE_FORCE_MATCHING:
     bf = cv.BFMatcher()
     matches = bf.match(des1,des2)
     matches = sorted(matches, key = lambda x :x.distance)
-    chosen_matches = matches[0:100]
+    chosen_matches = matches[0:nMatches]
     
     for i, m in enumerate(chosen_matches):
         #print(f"i: {i}, n: {n}, m: {m}")
@@ -117,7 +122,7 @@ if BRUTE_FORCE_MATCHING:
         pts1.append(kp1[m.queryIdx].pt)
     
     if DRAW_MATCHES:
-        matched_image = cv.drawMatches(imleft,kp1,imright,kp2,matches[:100],None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        matched_image = cv.drawMatches(imleft,kp1,imright,kp2,matches[:nMatches],None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
         plt.figure(figsize=(12,7))
         plt.imshow(matched_image)
         plt.show()
