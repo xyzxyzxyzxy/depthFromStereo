@@ -4,20 +4,51 @@ import cv2 as cv
 import undistort
 import matplotlib.pyplot as plt
 import sys
+import getopt
 
+INDEX = None
 SHOW_EPILINES = 1
 CORRECT_LENS_DISTORTION = 1
 CHECK_EPIPOLAR_CONSTRAINT = 1
 DRAW_MATCHES = 1
 SHOW_ROIS = 0
-BRUTE_FORCE_MATCHING = 0 # IF SET TO 0 FLANN IS USED
+BRUTE_FORCE_MATCHING = 0
 USE_R1 = 1
 
-if len(sys.argv) < 2:
-    print("Stereo pair index required")
+try:
+    optlist, args = getopt.getopt(sys.argv[1:], 'r:', ['index=', 'show-epi', 'undistort', 
+                                                        'check-epi', 
+                                                        'show-matches',
+                                                        'show-rois',
+                                                        'bruteforce'])
+except:
+    print('unexpected argument')
     sys.exit()
 
-INDEX = int(sys.argv[1])
+print(optlist)
+print(args)
+
+for opt, arg in optlist:
+    if opt in ['--index']:
+        INDEX = int(arg)
+    elif opt in ['--show-epi']:
+        SHOW_EPILINES = 1
+    elif opt in ['--undistort']:
+        CORRECT_LENS_DISTORTION = 1
+    elif opt in ['--check-epi']:
+        CHECK_EPIPOLAR_CONSTRAINT = 1
+    elif opt in ['--show-matches']:
+        DRAW_MATCHES = 1
+    elif opt in ['--show-rois']:
+        SHOW_ROIS = 1
+    elif opt in ['--bruteforce']:
+        BRUTE_FORCE_MATCHING = 1
+    elif opt in ['-r']:
+        RX = int(arg)
+
+if INDEX == None:
+    print("Stereo pair index is required")
+    sys.exit()
 
 #load stereo pair with index INDEX
 filename = "./StereoPairs/*{:02d}.JPG".format(INDEX)
@@ -213,10 +244,14 @@ R1, R2, t, = cv.decomposeEssentialMat(E)
 
 print(f"\nR1: {R1}, \nR2: {R2}, \nt: {t}")
 
-if USE_R1:
+if RX == 1:
     R = R1
-else:
+elif RX == 2:
     R = R2
+else:
+    print('argument -r has to be either 1 or 2')
+    print('quitting')
+    sys.exit()
 
 #STEREORECTIFY
 rectLeft, rectRight, projectionLeft, projectionRight, Q, roiL, roiR = cv.stereoRectify(K, dist, K, dist, 
