@@ -14,13 +14,15 @@ DRAW_MATCHES = 0
 SHOW_ROIS = 0
 BRUTE_FORCE_MATCHING = 0
 RX = None
+USE_KITTI = 0
 nMatches = 100
 
 try:
-    optlist, args = getopt.getopt(sys.argv[1:], 'r:', ['index=', 'show-epi', 'undistort', 
+    optlist, args = getopt.getopt(sys.argv[1:], 'R:', ['index=', 'show-epi', 'undistort', 
                                                         'check-epi', 
                                                         'show-matches',
                                                         'show-rois',
+                                                        'use-kitti',
                                                         'bruteforce='])
 except:
     print('unexpected argument')
@@ -30,7 +32,9 @@ print(optlist)
 print(args)
 
 for opt, arg in optlist:
-    if opt in ['--index']:
+    if opt in ['--use-kitti']:
+        USE_KITTI = 1
+    elif opt in ['--index']:
         INDEX = int(arg)
     elif opt in ['--show-epi']:
         SHOW_EPILINES = 1
@@ -44,11 +48,8 @@ for opt, arg in optlist:
         SHOW_ROIS = 1
     elif opt in ['--bruteforce']:
         BRUTE_FORCE_MATCHING = 1
-        try:
-            nMatches = int(arg)
-        except (ValueError, TypeError):
-            nMatches = 100
-    elif opt in ['-r']:
+        nMatches = int(arg)
+    elif opt in ['-R']:
         RX = int(arg)
 
 if INDEX == None:
@@ -56,38 +57,54 @@ if INDEX == None:
     sys.exit()
 
 #load stereo pair with index INDEX
-filename = "./StereoPairs/*{:02d}.JPG".format(INDEX)
+if USE_KITTI:
+    filename = "./KITTIPairs/*{:02d}.png".format(INDEX) #if using kitti intrinsic parameters load pair from KITTI dir
+    data = np.load("intrinsicParametersKITTI.npz")
+    K1 = data['K1']
+    K2 = data['K2']
+    dist1 = data['dist1']
+    dist2 = data['dist2']
+    w = int(data['w'])
+    h = int(data['h'])
+else:
+    filename = "./StereoPairs/*{:02d}.JPG".format(INDEX)
+    data = np.load("intrinsicParameters.npz")
+    K1 = data['K']
+    K2 = K1
+    dist1 = data['dist']
+    dist2 = dist1
+    w = int(data['w'])
+    h = int(data['h'])
+
+K = np.array([K1, K2])
+dist = np.array([dist1, dist2])
+
 print(filename)
 stereo_pair = glob.glob(filename)
-
 print(f"Loading stereo pair: {stereo_pair}")
 print(f"Loading intrinsic parameters")
 
-data = np.load("intrinsicParameters.npz")
-K = data['K']
-dist = data['dist']
-w = int(data['w'])
-h = int(data['h'])
-
-print("\nIntrinsic parameter matrix: \n", K)
-print("\nDistortion coefficients: \n", dist)
+print("\nIntrinsic parameter matrix camera 1: \n", K1)
+print("\nIntrinsic parameter matrix camera 2: \n", K2)
+print("\nDistortion coefficients camera 1: \n", dist1)
+print("\nDistortion coefficients camera 2: \n", dist2)
 print("Image_size: \n", w, h)
 
 stereo = []
 stereo_color = []
 
-for fname in stereo_pair:
+for i, fname in enumerate(stereo_pair):
     img_color = cv.imread(fname)
     img_color = cv.cvtColor(img_color, cv.COLOR_BGR2RGB)
     img_color = cv.resize(img_color, (w, h), interpolation = cv.INTER_AREA)
     img_gray = cv.cvtColor(img_color, cv.COLOR_RGB2GRAY)
     if CORRECT_LENS_DISTORTION:
-        img_gray, newmat = undistort.undistort(img_gray, K, dist)
-        img_color, _ = undistort.undistort(img_color, K, dist)
+        img_gray, newmat = undistort.undistort(img_gray, K[i], dist[i])
+        img_color, _ = undistort.undistort(img_color, K[i], dist[i])
         print(f"Shape after undistortion using intrinsic parameters: {img_gray.shape}")
         print(f"Shape after undistortion using intrinsic parameters (color): {img_color.shape}")
-        K = newmat
-        print("\nNew Intrinsic parameter matrix: \n", K)
+        K[i] = newmat
+        print("\nNew Intrinsic parameter matrix: \n", K[i])
     stereo.append(img_gray)
     stereo_color.append(img_color)
     cv.imshow(fname, img_gray)
@@ -226,7 +243,7 @@ if CHECK_EPIPOLAR_CONSTRAINT:
     print(f"\nTotal error epilines: {error_epi/((ptl.shape[0]))}")
 
 #get essential matrix from fundamental matrix
-E = K.T @ F @ K
+E = K[0].T @ F @ K[0] #just for the first one ...
 print(f"\nEssential matrix: \n{E}")
 
 R1, R2, t, = cv.decomposeEssentialMat(E)
@@ -259,7 +276,7 @@ else:
     sys.exit()
 
 #STEREORECTIFY
-rectLeft, rectRight, projectionLeft, projectionRight, Q, roiL, roiR = cv.stereoRectify(K, dist, K, dist, 
+rectLeft, rectRight, projectionLeft, projectionRight, Q, roiL, roiR = cv.stereoRectify(K[0], dist[0], K[1], dist[1], 
                                                                                        (w, h), R, t, 
                                                                                        None, None, None, None, None, 
                                                                                        cv.CALIB_ZERO_DISPARITY, 1, (0, 0))
@@ -276,8 +293,8 @@ xr, yr, wr, hr = roiR
 print("roiL values: ", roiL)
 print("roiR values: ", roiR)
 
-mapxL, mapyL = cv.initUndistortRectifyMap(K, dist, rectLeft, projectionLeft, (w, h), cv.CV_32FC1)
-mapxR, mapyR = cv.initUndistortRectifyMap(K, dist, rectRight, projectionRight, (w, h), cv.CV_32FC1)
+mapxL, mapyL = cv.initUndistortRectifyMap(K[0], dist[0], rectLeft, projectionLeft, (w, h), cv.CV_32FC1)
+mapxR, mapyR = cv.initUndistortRectifyMap(K[1], dist[1], rectRight, projectionRight, (w, h), cv.CV_32FC1)
 
 #used to get color in the point cloud
 rectifiedLeft_color = cv.remap(imleft_color, mapxL, mapyL, cv.INTER_LANCZOS4)
