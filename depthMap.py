@@ -20,7 +20,7 @@ elif len(sys.argv) > 1:
     fname = "stereoData" + str(INDEX) + ".npz"
 
     if not exists(fname):
-        print("epipolarGeometry.py needs to run first, ensure that the corresponding stereoData[idx].npz file has been generated.")
+        print("rectifyStereoPair.py needs to run first, ensure that the corresponding stereoData[idx].npz file has been generated.")
         sys.exit()
 
     data = np.load(fname)
