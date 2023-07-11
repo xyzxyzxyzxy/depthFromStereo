@@ -3,6 +3,13 @@ Reconstructs a point cloud from stereo images acquired with the same **calibrate
 Note that the accuracy of this approach HEAVILY depends on the keypoints found and their matching. That is used to estimate the Fundamental matrix containing all the parameters needed to know the position of one camera with respect to the other.\
 It works better with scenes with a high number of distinct features positioned on different planes.
 
+#### Example of reconstructed point cloud using stereo pair from KITTI dataset
+![Alt Text](depth.gif "Reconstructed point cloud from KITTI dataset sample stereo pair")
+
+#### Disparity map computed from stereo pair
+<img src="KITTIdepth.png" alt= “” width="70%" height="70%" title="Disparity map extracted from KITTI dataset sample">
+<img src="KITTIsample.png" alt= “” width="70%" height="70%" title="Sample from the KITTI dataset">
+
 The code is structured in 3 files that need to run in a specific order:
 
 1. `intrinsicParameters.py sourceDirectory` to be called with the name of the directory containing the images you want to use to calibrate the camera (The same camera will be used to acquire the stereo pairs of the scenes to reconstruct). A `intrinsicParameters.npz` file is generated containing the intrinsic parameters of the camera and distortion coefficients found by the camera calibration algorithm using the given images.
