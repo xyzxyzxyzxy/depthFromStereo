@@ -1,8 +1,16 @@
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
+import math
 
 def findCorrespondence(imleft, imright, matching=False, nMatches=100, draw=True):
+
+    imleft_color = imleft
+    imright_color = imright
+
+    imleft = cv.cvtColor(imleft_color, cv.COLOR_RGB2GRAY)
+    imright = cv.cvtColor(imright_color, cv.COLOR_RGB2GRAY)
+
     #use sift to get keypoints and descriptors
     sift = cv.SIFT_create()
     kp1, des1 = sift.detectAndCompute(imleft, None)
@@ -11,8 +19,9 @@ def findCorrespondence(imleft, imright, matching=False, nMatches=100, draw=True)
     pts1 = []
     pts2 = []
 
-    if matching and nMatches > 0:
+    if matching == 1 and nMatches > 0:
         #USE BRUTEFORCE MATCHING
+        print("\nUSING BRUTEFORCE MATCHING\n")
         bf = cv.BFMatcher()
         matches = bf.match(des1,des2)
         matches = sorted(matches, key = lambda x :x.distance)
@@ -26,8 +35,9 @@ def findCorrespondence(imleft, imright, matching=False, nMatches=100, draw=True)
             plt.figure(figsize=(12,7))
             plt.imshow(matched_image)
             plt.show()
-    else:
+    elif matching == 0:
         #USE FLANN MATCHER
+        print("\nUSING FLANN MATCHING\n")
         FLANN_INDEX_KDTREE = 1
         index_par = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
         search_par = dict(checks=50)
@@ -56,6 +66,20 @@ def findCorrespondence(imleft, imright, matching=False, nMatches=100, draw=True)
             im_matches = cv.drawMatchesKnn(imleft,kp1,imright,kp2,matches,None,**draw_params)
             plt.imshow(im_matches,)
             plt.show()
+    else:
+        print("\nUSING MANUAL MATCHING\n")
+        imleft_copy = np.copy(imleft_color)
+        imright_copy = np.copy(imright_color)
+        for i in range(15): #find 15
+            pts1 = selectKeypoint(imleft_copy, "left", pts1, i)
+            pts2 = selectKeypoint(imright_copy, "right", pts2, i)
+            cv.destroyAllWindows()
+        if draw:
+            plt.figure(figsize=(12,7))
+            im_matches = drawMatches(imleft_color, pts1, imright_color, pts2)
+            plt.imshow(im_matches,)
+            plt.show()
+
     return pts1, pts2
 
 def drawlines(img1,img2,lines,pts1,pts2):
@@ -89,3 +113,98 @@ def checkEpipolarConst(pts1, pts2, l1, l2, F):
         error_epi = error_epi + np.abs(ptl[i, 0]* l2[i, 0] + ptl[i, 1]* l2[i, 1] + ptl[i, 2] * l2[i, 2]) +\
             np.abs(ptr[i, 0]* l1[i, 0] + ptr[i, 1]* l1[i, 1] + ptr[i, 2] * l1[i, 2])
     print(f"\nTotal error epilines: {error_epi/((ptl.shape[0]))}")
+
+def selectKeypoint(img, name, pts, index):
+    # callback function
+    index = index + 1
+    name = name + str(index)
+    c = 0
+    def click_event(event, x, y, flags, params):
+        # checking for left mouse clicks
+        nonlocal c
+        if event == cv.EVENT_LBUTTONDOWN and c == 0:
+            c = c + 1
+            # displaying the coordinates
+            # on the Shell
+
+            pt = (x, y)
+            print(pt)
+            pts.append(pt)
+
+            # displaying the coordinates
+            # on the image window
+
+            color = ((0 + 70*index) % 255 , (200 + 50*index) % 255, (0 + 20*index) % 255)
+            
+            font = 1
+            cv.putText(img, str(x) + ',' +
+                        str(y), (x,y), font,
+                        1, color, 1)
+            
+            cv.circle(img, (x, y), radius=2, color=color, thickness=3)
+            cv.imshow(name, img)
+    
+        # checking for right mouse clicks     
+        # if event==cv.EVENT_RBUTTONDOWN:
+    
+        #     # displaying the coordinates
+        #     # on the Shell
+        #     print(x, ' ', y)
+    
+        #     # displaying the coordinates
+        #     # on the image window
+        #     font = 1
+        #     b = img[y, x, 0]
+        #     g = img[y, x, 1]
+        #     r = img[y, x, 2]
+        #     cv.putText(img, str(b) + ',' +
+        #                 str(g) + ',' + str(r),
+        #                 (x,y), font, 1,
+        #                 (255, 255, 255), 1)
+        #     cv.circle(img, (x, y), radius=2, color=(255, 255, 255), thickness=-1)
+        #     cv.imshow(name, img)
+
+    cv.imshow(name, img)
+    cv.setMouseCallback(name, click_event)
+    cv.waitKey(0)
+    return pts
+
+def isRotationMatrix(R) :
+    Rt = np.transpose(R)
+    shouldBeIdentity = np.dot(Rt, R)
+    I = np.identity(3, dtype = R.dtype)
+    n = np.linalg.norm(I - shouldBeIdentity)
+    return n < 1e-6
+ 
+# Calculates rotation matrix to euler angles
+# The result is the same as MATLAB except the order
+# of the euler angles ( x and z are swapped ).
+def rotationMatrixToEulerAngles(R) :
+ 
+    assert(isRotationMatrix(R))
+ 
+    sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+ 
+    singular = sy < 1e-6
+ 
+    if  not singular :
+        x = math.atan2(R[2,1] , R[2,2])
+        y = math.atan2(-R[2,0], sy)
+        z = math.atan2(R[1,0], R[0,0])
+    else :
+        x = math.atan2(-R[1,2], R[1,1])
+        y = math.atan2(-R[2,0], sy)
+        z = 0
+ 
+    return np.array([x, y, z])
+
+def drawMatches(imleft, pts1, imright, pts2):
+    im_matches = np.concatenate((imleft, imright), axis=1)
+    h, w = imleft.shape[:2]
+    for i in range(len(pts1)):
+        color = tuple(np.random.randint(0,255,3).tolist())
+        cv.circle(im_matches, (pts1[i][0], pts1[i][1]), 2, color, 5)
+        cv.circle(im_matches, (pts2[i][0] + w, pts2[i][1]), 2, color, 5)
+        cv.line(im_matches, (pts1[i][0], pts1[i][1]), (pts2[i][0] + w, pts2[i][1]) , color, 3)
+
+    return cv.cvtColor(im_matches, cv.COLOR_BGR2RGB)

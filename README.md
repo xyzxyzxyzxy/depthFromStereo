@@ -15,7 +15,7 @@ The code is structured in 3 files that need to run in a specific order:
 1. `intrinsicParameters.py sourceDirectory` to be called with the name of the directory containing the images you want to use to calibrate the camera (The same camera will be used to acquire the stereo pairs of the scenes to reconstruct). A `intrinsicParameters.npz` file is generated containing the intrinsic parameters of the camera and distortion coefficients found by the camera calibration algorithm using the given images.
 (*Once the intrinsic parameters have been computed there is no need to run this again*)
 
-2. `rectifyStereoPair.py --index=IDX [options] -R n` where **IDX** will be the index of the stereo pair located by default in the directory `./stereoPairs/` or `./KITTIPairs/` if `--use-kitti` option is given. (e.g use `rectifyStereoPair.py --index=10 -R 1` if you want to use stereo pair `./StereoPairs/L10.jpg ./StereoPairs/R10.jpg`). The `n` parameter of `-R n` flag indicates which one of the two possibile matrices given as output by SVD to use (`n` can be either `1` or `2`). This writes the parameters that will be used to create the disparity to a file called `stereoDataIDX.npz` in the root directory where **IDX** is the index of the pair given as input. 
+2. `rectifyStereoPair.py --index=IDX [options]` where **IDX** will be the index of the stereo pair located by default in the directory `./stereoPairs/` or `./KITTIPairs/` if `--use-kitti` option is given. (e.g use `rectifyStereoPair.py --index=10 -R 1` if you want to use stereo pair `./StereoPairs/L10.jpg ./StereoPairs/R10.jpg`). *Images with index 30 and above are shot with a smartphone camera, the intrinsic parameters have to be computed using* `./CalibrationImages3` *before using them*. This writes the parameters that will be used to create the disparity to a file called `stereoDataIDX.npz` in the root directory where **IDX** is the index of the pair given as input. 
 
     The file contains:
 
@@ -32,11 +32,12 @@ The code is structured in 3 files that need to run in a specific order:
     **Options :**\
     `--use-kitti` tells the program that the stereo pair given has to be taken from the `./KITTIPairs/` directory, a special calibration file is used containing the intrinsic parameters given by the KITTI dataset. The fundamental matrix estimatino and subsequent computation of R and T are done in the usual way.\
     `--show-epi` shows epipolar lines drawn on the two images.\
-    `--check-epi` computes error using found epipolar lines. (shown as text output).\
+    `--find-fundamental` used matching points to compute fundamental matrix, later used for rectification, the default behaviour is to find essential matrix directly.
     `--show-matches` shows the point matches as circles on the two images connected by lines.\
     `--show-rois` after the rectification procedure shows the cropped portion of the image containing only image data (if it was possible to generate).\
     `--undistort` undistorts the two images of the pair using intrinsic parameters and distortion coefficients and uses a refined version of the intrinsic parameters matrix for the following steps.\
-    `--bruteforce nMatches` uses bruteforce matching as matching procedure instead of the default **FLANN**. It uses the best `nMatches` from the total matches found.
+    `--bruteforce nMatches` uses bruteforce matching as matching procedure instead of the default **FLANN**. It uses the best `nMatches` from the total matches found.\
+    `-R n` can be used to force which one of the two possibile matrices given as output by SVD to use (`n` can be either `1` or `2`).
 
 3. `depthMap.py index` where `index` will be the index of the stereo pair used when calling `epipolarGeometry.py index`. This generates the disparity map with the aid of a window that allows to adjust the blockMatching algorithm parameters. When the parameters have been configured one can confirm by pressing **esc** on the keyboard. The disparity map produced is then used in conjunction with the matrix **Q** to produce a point cloud `stereoX.ply` where **X** is the index of the pair in exam.
 

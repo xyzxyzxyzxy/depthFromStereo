@@ -25,24 +25,17 @@ elif len(sys.argv) > 1:
 
     data = np.load(fname)
     Q = data['Q']
-    roiL = data['roiL']
-    roiR = data['roiR']
-
+    
     print(f"getting depth map from file: {fname}")
 
     print(f"Q:\n{Q}")
-    print(f"roiL:\n{roiL}")
-    print(f"roiR:\n{roiR}")
-
-    xl, yl, wl, hl = roiL
-    xr, yr, wr, hr = roiR
 
     rectifiedLeft = cv.imread('rectifiedLeft.jpg', cv.IMREAD_GRAYSCALE)
     rectifiedRight = cv.imread('rectifiedRight.jpg', cv.IMREAD_GRAYSCALE)
     rectifiedLeft_color = cv.imread('rectifiedLeft_c.jpg')
     rectifiedRight_color = cv.imread('rectifiedRight_c.jpg')
-    # rectifiedLeft_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
-    # rectifiedRight_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
+    rectifiedLeft_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
+    rectifiedRight_color = cv.cvtColor(rectifiedLeft_color, cv.COLOR_BGR2RGB)
 else:
     print("Either a stereo pair index or the path to two images has to be provided")
     sys.exit()
@@ -54,7 +47,7 @@ def nothing(x):
 cv.namedWindow('disp',cv.WINDOW_NORMAL)
 cv.resizeWindow('disp',600,80)
  
-cv.createTrackbar('numDisparities','disp',1,15,nothing) #this is multiplied by 16
+cv.createTrackbar('numDisparities','disp',1,50,nothing) #this is multiplied by 16
 cv.createTrackbar('blockSize','disp',5,50,nothing)
 cv.createTrackbar('preFilterType','disp',1,1,nothing)
 cv.createTrackbar('preFilterSize','disp',2,25,nothing)

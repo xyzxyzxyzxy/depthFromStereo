@@ -34,8 +34,13 @@ for fname in imgs:
 
     #hsv mask
     img_hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+
     lwr = np.array([0, 0, 100])
     upr = np.array([179, 61, 252])
+
+    # lwr = np.array([0, 0, 240])
+    # upr = np.array([179, 61, 255])
+
     msk = cv.inRange(img_hsv, lwr, upr)
 
     #use morphology
@@ -59,7 +64,7 @@ for fname in imgs:
         #ret is passed from the find corners function to understand if the whole board was found or not
         cv.drawChessboardCorners(img, PATTERN_SIZE, ref_corners, ret)
         cv.imshow('corners', img)
-        cv.waitKey(30)
+        cv.waitKey(50)
         goodImgcount = goodImgcount + 1
 
     cv.destroyAllWindows()
@@ -88,8 +93,8 @@ for i in range(len(objectpoints)):
 print(f"Intrinsic parameters: \n{mat}")
 print(f"Distortion coeff: \n{dist}")
 
-#size of sensor
-sensor = (0.0223, 0.0149) #in meters
+#size of sensor CANON EOS 600D
+#sensor = (0.0223, 0.0149) #in meters
 
 w = img.shape[1]
 h = img.shape[0]
@@ -98,14 +103,14 @@ print("horizontalpx: ", w)
 print("verticalpx: ", h)
 print("total # of px: ", w*h)
 
-pxsize = sensor[0]/w
-pysize = sensor[1]/h
+# pxsize = sensor[0]/w
+# pysize = sensor[1]/h
 
-print(f"size of pixel px: {pxsize}, size of pixel py: {pysize}")
-fx = mat[0, 0]*pxsize
-fy = mat[1, 1]*pysize
+# print(f"size of pixel px: {pxsize}, size of pixel py: {pysize}")
+# fx = mat[0, 0]*pxsize
+# fy = mat[1, 1]*pysize
 
-print(f"estimated focal length fx: {fx}, fy: {fy}")
+#print(f"estimated focal length fx: {fx}, fy: {fy}")
 
 print("# of good images: ", goodImgcount)
 
