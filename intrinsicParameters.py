@@ -42,6 +42,8 @@ for fname in imgs:
     # upr = np.array([179, 61, 255])
 
     msk = cv.inRange(img_hsv, lwr, upr)
+    # cv.imshow("mask", msk)
+    # cv.waitKey(0)
 
     #use morphology
     krn = cv.getStructuringElement(cv.MORPH_RECT, (50, 50))

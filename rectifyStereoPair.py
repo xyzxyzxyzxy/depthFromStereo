@@ -8,7 +8,7 @@ import getopt
 from epipolarGeometry import *
 
 (FLANN_MATCHING, BRUTEFORCE_MATCHING, MANUAL_MATCHING) = range(3)
-
+# DEFAULT OPTIONS
 INDEX = None
 SHOW_EPILINES = 0
 FIND_FUNDAMENTAL = 0
@@ -18,14 +18,17 @@ SHOW_ROIS = 0
 MATCHING = FLANN_MATCHING
 RX = 1
 USE_KITTI = 0
-nMatches = 100
+FORCE_POSE = 0
+
+nMatches = 100 #Used only when matching is bruteforce
 
 try:
-    optlist, args = getopt.getopt(sys.argv[1:], 'R:', ['index=', 'show-epi', 'undistort', 
+    optlist, args = getopt.getopt(sys.argv[1:], '', ['index=', 'show-epi', 'undistort', 
                                                         'find-fundamental', 
                                                         'show-matches',
                                                         'show-rois',
                                                         'use-kitti',
+                                                        'force-pose',
                                                         'manual-matching',
                                                         'bruteforce='])
 except:
@@ -36,16 +39,20 @@ print(optlist)
 print(args)
 
 for opt, arg in optlist:
-    if opt in ['--use-kitti']: #use sample from kitti dataset with kitti calibration data
+    #use sample from kitti dataset with kitti calibration data
+    if opt in ['--use-kitti']:
         USE_KITTI = 1
     elif opt in ['--index']:
         INDEX = int(arg)
     elif opt in ['--show-epi']:
         SHOW_EPILINES = 1
+    #perform undistortion using intrinsic paramters / distortion coefficients
     elif opt in ['--undistort']:
         CORRECT_LENS_DISTORTION = 1
+    #find fundamental matrix instead of essential matrix directly
     elif opt in ['--find-fundamental']:
         FIND_FUNDAMENTAL = 1
+    #displays found matches over images
     elif opt in ['--show-matches']:
         DRAW_MATCHES = 1
     elif opt in ['--show-rois']:
@@ -55,8 +62,8 @@ for opt, arg in optlist:
         nMatches = int(arg)
     elif opt in ['--manual-matching']:
         MATCHING = MANUAL_MATCHING
-    elif opt in ['-R']: #select R1 or R2 manually
-        RX = int(arg)
+    elif opt in ['--force-pose']:
+        FORCE_POSE = 1
 
 if INDEX == None:
     print("Stereo pair index is required")
@@ -65,74 +72,79 @@ if INDEX == None:
 #load stereo pair with index INDEX
 if USE_KITTI:
     filename = "./KITTIPairs/*{:03d}.png".format(INDEX) #if using kitti intrinsic parameters load pair from KITTI dir
+    print("Loading KITTI intrinsic parameters...")
     data = np.load("intrinsicParametersKITTI.npz")
     K1 = data['K1']
     K2 = data['K2']
     dist1 = data['dist1']
     dist2 = data['dist2']
-    w = int(data['w'])
-    h = int(data['h'])
+    w_calib = int(data['w'])
+    h_calib = int(data['h'])
 else:
     filename = "./StereoPairs/*{:02d}.JPG".format(INDEX)
+    print(f"Loading intrinsic parameters...")
     data = np.load("intrinsicParameters.npz")
     K1 = data['K']
     K2 = K1
     dist1 = data['dist']
     dist2 = dist1
-    w = int(data['w'])
-    h = int(data['h'])
+    w_calib = int(data['w'])
+    h_calib = int(data['h'])
 
 K = np.array([K1, K2])
 dist = np.array([dist1, dist2])
 
-print(filename)
 stereo_pair = glob.glob(filename)
+#force left right order
+stereo_pair = sorted(stereo_pair)
 print(f"Loading stereo pair: {stereo_pair}")
-print(f"Loading intrinsic parameters")
-
-print("\nIntrinsic parameter matrix camera 1: \n", K1)
-print("\nIntrinsic parameter matrix camera 2: \n", K2)
-print("\nDistortion coefficients camera 1: \n", dist1)
-print("\nDistortion coefficients camera 2: \n", dist2)
-print("\nImage_size: \n", w, h)
+print("Camera Intrinsic Parameters:\n")
+print("Intrinsic parameter matrix camera 1: \n", K1)
+print("Intrinsic parameter matrix camera 2: \n", K2)
+print("Distortion coefficients camera 1: \n", dist1)
+print("Distortion coefficients camera 2: \n", dist2)
+print("Image_size: \n", w_calib, h_calib)
 
 stereo = []
 stereo_color = []
 
 for i, fname in enumerate(stereo_pair):
-    img_color = cv.imread(fname)
-    img_color = cv.resize(img_color, (w, h), interpolation = cv.INTER_AREA)
-    img_gray = cv.cvtColor(img_color, cv.COLOR_RGB2GRAY)
+    img = cv.imread(fname)
+    img = cv.resize(img, (w_calib, h_calib), interpolation = cv.INTER_AREA)
+    
     if CORRECT_LENS_DISTORTION:
-        print("Undistorting stereo pair, refining intrinsic parameters...\n")
-        img_gray, newmat = undistort.undistort(img_gray, K[i], dist[i])
-        img_color, _ = undistort.undistort(img_color, K[i], dist[i])
-        print(f"Shape after undistortion using intrinsic parameters: {img_gray.shape}")
-        print(f"Shape after undistortion using intrinsic parameters (color): {img_color.shape}")
+        print("\nUndistorting stereo pair, updating intrinsic parameters...\n")
+        img, newmat = undistort.undistort(img, K[i], dist[i])
+        print(f"Shape after undistortion using intrinsic parameters: {img.shape}")
         K[i] = newmat
         print("\nNew Intrinsic parameter matrix: \n", K[i])
-    stereo.append(img_gray)
-    stereo_color.append(img_color)
-    cv.imshow(fname, img_gray)
+    
+    stereo.append(cv.cvtColor(img, cv.COLOR_RGB2GRAY))
+    stereo_color.append(img)
+    cv.imshow(fname, img)
     cv.waitKey(0)
 
-imright = stereo[0]
-imleft = stereo[1]
+msg = f"left and right images do not have same shape, got {stereo[0].shape}, {stereo[1].shape}"
+assert stereo[0].shape == stereo[1].shape, msg
+
+imleft = stereo[0]
+imright = stereo[1]
 imright_color = stereo_color[0]
 imleft_color = stereo_color[1]
 
-h, w = imright.shape #new height and with of both images
+h, w = imright.shape #new height and with after undistortion
 
 pts1, pts2 = findCorrespondence(imleft_color, imright_color, MATCHING, nMatches, DRAW_MATCHES)
 
 pts1 = np.int32(pts1)
 pts2 = np.int32(pts2)
 
-#F, mask = cv.findFundamentalMat(pts1 ,pts2, cv.FM_RANSAC, 3, 0.99)
 if FIND_FUNDAMENTAL:
+######################################### FIND FUNDAMENTAL MATRIX  ########################################
+    #at least 15 points are needed
     print("Finding fundamental matrix from matched points...\n")
     if MATCHING == MANUAL_MATCHING:
-        F, mask = cv.findFundamentalMat(np.float32(pts1), np.float32(pts2), cv.FM_RANSAC) #at least 15 points are needed
+        F, mask = cv.findFundamentalMat(np.float32(pts1), np.float32(pts2), cv.FM_RANSAC)
     else:
         F, mask = cv.findFundamentalMat(np.float32(pts1), np.float32(pts2), cv.FM_LMEDS)
 
@@ -141,15 +153,15 @@ if FIND_FUNDAMENTAL:
 
     print("Fundamental matrix: \n", F)
 
+    #compute epilines
+    l1 = cv.computeCorrespondEpilines(pts2.reshape(-1, 1, 2), 2, F)
+    l1 = l1.reshape(-1, 3)
+
+    l2 = cv.computeCorrespondEpilines(pts1.reshape(-1, 1, 2), 1, F)
+    l2 = l2.reshape(-1, 3)
+
     if SHOW_EPILINES:
-        #compute epilines
-        l1 = cv.computeCorrespondEpilines(pts2.reshape(-1, 1, 2), 2, F)
-        l1 = l1.reshape(-1, 3)
         epi_left, epi_leftc = drawlines(imleft, imright, l1, pts1, pts2)
-
-
-        l2 = cv.computeCorrespondEpilines(pts1.reshape(-1, 1, 2), 1, F)
-        l2 = l2.reshape(-1, 3)
         epi_right, epi_rightc = drawlines(imright, imleft, l2, pts2, pts1)
 
         fig, ax = plt.subplots(1, 2, figsize=(12,7))
@@ -157,15 +169,10 @@ if FIND_FUNDAMENTAL:
         ax[1].imshow(epi_right)
         plt.show()
 
-        # print(f"epilines on left image: {l1}")
-        # print(f"epilines on right image: {l2}")
-        # print(f"lines1 lenght: {l1.shape}, #of points right image: {pts2.shape}")
-        # print(f"lines2 lenght: {l2.shape}, #of points left image: {pts1.shape}")
-
     #CHECK QUALITY USING EPIPOLAR CONSTRAINT
     checkEpipolarConst(pts1, pts2, l1, l2, F)
 
-    #get essential matrix from fundamental matrix and intrinsic parameters
+    # Get essential matrix from fundamental matrix and intrinsic parameters
     E = K[0].T @ F @ K[0]
     print(f"\nEssential matrix: \n{E}")
 
@@ -174,55 +181,33 @@ if FIND_FUNDAMENTAL:
 else:
 ############################### FIND ESSENTIAL MATRIX DIRECTLY ####################################
     print("Finding essential matrix from matched points...\n")
-    E, _= cv.findEssentialMat(np.float32(pts1), np.float32(pts2), K[0], cv.RANSAC)
-    print(f"\nEssential matrix (through findEssentialMatrix): \n{E}")
+    E, mask = cv.findEssentialMat(np.float32(pts1), np.float32(pts2), K[0], cv.RANSAC, 0.999, 1)
+    print(f"Essential matrix (through findEssentialMatrix): \n{E}")
 
-R1, R2, t, = cv.decomposeEssentialMat(E) #use SVD on Essential matrix
+ret, R, t, _ = cv.recoverPose(E, pts1, pts2, K[0]) #recover relative camera rotation and translation
 
-euler_angles1 = rotationMatrixToEulerAngles(R1) #get euler angles from rotation matrix
-euler_angles2 = rotationMatrixToEulerAngles(R2)
+#performs chirality check to retrieve rotation such that 3d points lie in front of the camera
+if USE_KITTI and FORCE_POSE:
+    #FORCE pose from calibration file
+    R_f = data['R2']
+    t_f = data['T2']
+    print(f"Estimated t:{t}")
+    print("Forcing Rotation and translation from calibration file")
+    print("Absolute difference recovered pose and \"true\" pose from calibration file:")
+    print(f"\nRotation (error):\n{abs(R - R_f)}\nTranslation (error):\n{abs(t.ravel()-(t_f/np.linalg.norm(t_f)))}")
+    R = R_f
+    t = t_f
 
-(R1rx, R1ry, R1rz) = np.rad2deg(euler_angles1)
-(R2rx, R2ry, R2rz) = np.rad2deg(euler_angles2)
+print(f'R:\n{R}')
+print(f't:\n{t}')
 
-print(f"\nEuler angles R1:\nrx:{R1rx}, ry:{R1ry}, rz:{R1rz}\n")
-print(f"Euler angles R2:\nrx:{R2rx}, ry:{R2ry}, rz:{R2rz}\n")
-
-if abs(R1rx) > 100 or abs(R1ry) > 100 or abs(R1rz) > 100:
-    print("Using R2")
-    RX = 2
-else:
-    print("Using R1")
-
-#DEBUG
-# t[1:3] = 0
-# t[0] = -4.731049999999999978e-01
-# t[1] = 5.551470000000000189e-03
-# t[2] = -5.250882000000000119e-03
-# R1 = np.zeros((3, 3))
-# theta = np.deg2rad(5)
-# R1[0, 0] = np.cos(theta)
-# R1[0, 2] = -np.sin(theta)
-# R1[1, 1] = 1
-# R1[2, 0] = np.sin(theta)
-# R1[2, 2] = np.cos(theta)
-# print("DEBUG T: ", t)
-# print("DEBUG R1: ", R1)
-
-print(f"\nR1: {R1}, \nR2: {R2}, \nt: {t}")
-
-if RX == 1:
-    R = R1
-elif RX == 2:
-    R = R2
-else:
-    print('argument -R has to be either 1 or 2')
-    print('Quitting')
-    sys.exit()
+euler = rotationMatrixToEulerAngles(R)
+(R1rx, R1ry, R1rz) = np.rad2deg(euler)
+print(f"\nEuler angles R:\nrx:{R1rx}, ry:{R1ry}, rz:{R1rz}\n")
 
 ###################################### STEREO RECTIFY ############################################
 rectLeft, rectRight, projectionLeft, projectionRight, Q, roiL, roiR = cv.stereoRectify(K[0], dist[0], K[1], dist[1], 
-                                                                                       (w, h), R, t, 
+                                                                                       (w_calib, h_calib), R, t, 
                                                                                        None, None, None, None, None, 
                                                                                        cv.CALIB_ZERO_DISPARITY, 0, (0, 0))
 

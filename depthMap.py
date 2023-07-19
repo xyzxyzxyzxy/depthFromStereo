@@ -45,9 +45,9 @@ def nothing(x):
     pass
  
 cv.namedWindow('disp',cv.WINDOW_NORMAL)
-cv.resizeWindow('disp',600,80)
+cv.resizeWindow('disp',600,150)
  
-cv.createTrackbar('numDisparities','disp',1,50,nothing) #this is multiplied by 16
+cv.createTrackbar('numDisparities','disp',1,25,nothing) #this is multiplied by 16
 cv.createTrackbar('blockSize','disp',5,50,nothing)
 cv.createTrackbar('preFilterType','disp',1,1,nothing)
 cv.createTrackbar('preFilterSize','disp',2,25,nothing)
@@ -57,7 +57,7 @@ cv.createTrackbar('uniquenessRatio','disp',15,100,nothing)
 cv.createTrackbar('speckleRange','disp',0,100,nothing)
 cv.createTrackbar('speckleWindowSize','disp',3,25,nothing)
 cv.createTrackbar('disp12MaxDiff','disp',5,25,nothing)
-cv.createTrackbar('minDisparity','disp',5,25,nothing)
+cv.createTrackbar('minDisparity','disp',0,20,nothing)
 
 sbm = cv.StereoBM.create(numDisparities=64, blockSize=5)
 disparity = 0
