@@ -1,5 +1,7 @@
 \documentclass[12pt]{amsart}
 \usepackage[T1]{fontenc}
+\usepackage{caption}
+\usepackage{subcaption}
 \usepackage[utf8]{inputenc}
 \usepackage{fullpage}
 \usepackage{parskip}
@@ -29,7 +31,7 @@
 The objective of the project is to retrieve relative depth information from a pair of stereo images using epipolar geometry and a minimal setup consisting of a 
 single calibrated camera and no information on the portrayed scene. 
 The two pictures of the same scene are shot using the same camera translated in space (and possibly rotated). The approach can be considered a
-simple case of Structure From Motion using just two views of the same stationary object. A natural extension of this can be the introduction of multiple views to better reconstruct 
+simple case of "Structure From Motion" using just two views of the same stationary object. A natural extension of this can be the introduction of multiple views to better reconstruct 
 the 3D shape of the scene.
 \section*{Approach}
 The approach can be broken down into a sequence of steps:
@@ -50,7 +52,7 @@ The approach can be broken down into a sequence of steps:
 \end{enumerate}
 The output of this process is a color point cloud representing the 3D structure of the photographed scene (up to scale).
 The following sections will address each step in more detail.
-\subsection{Camera Calibration}
+\subsection{Camera Calibration} \label{sec:calibration}
 Calibration is performed using multiple views of a checkerboard pattern acquired with the camera to be calibrated, maintaining the same focus throughout all the shots.
 The calibration process is comprised of the following steps for each of the calibration images:
 \begin{enumerate}[label={\arabic*.}]
@@ -129,13 +131,14 @@ the disparity is defined as the difference \[d = x' - x = \frac{Bf}{Z} \]
 If B denotes the distance between the optical centers, also called the baseline in this context, 
 the depth of P in the (normalized) coordinate system attached to the first camera is \[Z = -Bf/d\] 
 In particular, the coordinate vector of the point P in the frame attached to the first camera is 
-\(P = -(Bf/d)p\), where \(p = (x,y,1)^T\) is the vector of normalized image coordinates of p (see figure \ref{fig:disparity}).
+\(P = -(Bf/d)p\), where \(p = (x,y,1)^T\) is the vector of normalized image coordinates of p (see figure \ref{fig:disp}).
 In short, the above equation says that the depth of a point in a scene is inversely proportional to the difference in distance of corresponding image points and their camera centers. 
 So to find depth information for any point \(p\) we need to find the corresponding disparity \(d\).\\ 
 To do so a \textbf{Stereo Block matching} algorithm is used.
 \begin{figure}[h]
     \includegraphics[width=0.5\textwidth]{disparity}
-    \label{fig:disparity}
+    \caption{Disparity and depth geometry}
+    \label{fig:disp}
 \end{figure}
 This works by using "Sum of Absolute Difference" windows to find matching points between the left and right stereo-rectified images. 
 This algorithm finds only strongly matching (high-texture) points between the two images. Thus, in a highly textured scene such as might occur outdoors in a forest, every pixel might have computed depth. 
@@ -162,5 +165,72 @@ the matrix \(Q\) returned during rectification phase is the following \((4x4)\) 
 where \(B\) is a horizontal shift between the cameras and $cx_1=cx_2$.
 Furthermore \(-\frac{1}{B}\) is going to be \(-1\) because \(t\) obtained by SVD was a unit vector since no information on the distance between the cameras was provided.
 \section*{Results}
+Tests are conducted using a reflex camera (Canon EOS 600D) with a 50mm lens, 
+the camera's intrinsic parameters are extracted during the calibration phase as explained in \ref{sec:calibration}, and stereo pairs are acquired
+with the same camera. The stereo pairs portray different stationary objects, the position of the object in the scene must not change in time since the images
+of the two views are not acquired simultaneously.
+Here is shown an example of stereo pair (fig \ref{fig:stereo}), with relative computed disparity and 3D point cloud (fig \ref{fig:depth}).\\
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}{.5\textwidth}
+      \centering
+      \includegraphics[width=0.98\linewidth]{L10.JPG}
+      \caption{Left view}
+      \label{fig:10left}
+    \end{subfigure}%
+    \begin{subfigure}{.5\textwidth}
+      \centering
+      \includegraphics[width=0.98\linewidth]{R10.JPG}
+      \caption{Right view}
+      \label{fig:10right}
+    \end{subfigure}
+    \caption{Stereo pair}
+    \label{fig:stereo}
+\end{figure}
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}{.5\textwidth}
+      \centering
+      \includegraphics[width=0.98\linewidth]{disparitymap.png}
+      \caption{Disparity image}
+      \label{fig:disparityimg}
+    \end{subfigure}%
+    \begin{subfigure}{.5\textwidth}
+      \centering
+      \includegraphics[width=0.98\linewidth]{pointcloud.png}
+      \caption{Point Cloud}
+      \label{fig:pointcloud}
+    \end{subfigure}
+    \caption{Disparity image and Point cloud}
+    \label{fig:depth}
+\end{figure}
+
+The quality of the 3D reconstruction (up to scale) is strongly tied to the quality of estimation of the relative pose of the two cameras.
+This fundamentally depends on how well the calibration process estimated the camera's intrinsic parameters and the number of good matches found by the matching algorithm
+that will be used in the Fundamental matrix estimation procedure. The results are very sensitive to the quality and number of matches found.
+More robust results can be obtained by acquiring the stereo images with two distinct calibrated cameras, in this case, the relative position of the two cameras is
+computed during the calibration phase using a calibration pattern and can be more precise.
+The considered approach can output correct 3D reconstructions of the scenes when the two image planes are close to parallel. 
+When the angle or rotation of the second camera with respect to the first is not close to zero,
+or the translation of one camera with respect to the first is not bound to the x-axis the rectification procedure fails to produce expected results
+due to incorrect estimation of the relative pose. The next stereo block matching phase is unable to find correspondences if the two
+images are not precisely rectified and as a result, the disparity cannot be computed.
+As mentioned in the first section, being this a simple version of "Structure From Motion" limited to two views, a natural extension of this procedure is to consider
+multiple views of the same stationary object. If the environment is relatively rich in recognizable features then 
+it should be possible to compute correspondences between enough points — from frame to frame — to reconstruct not only the trajectory of the camera but also, indirectly, 
+the overall three-dimensional structure of the scene and the locations of all the aforementioned features. 
+Matching scene points from multiple views (not just two) could reconstruct a better 3D structure of the scene.
+\section*{Deep Learning Approach}
+For comparison purposes, a depth estimation method based on Deep Learning is explored in this section. The "ChiTransformer"\cite{chitransformer} method
+approach fuses the two prevalent methodologies in deep learning based depth estimation, "Stereo Matching" and "Monocular Depth Estimation" (referred to as MDE). 
+Stereo information can be injected into the MDE process to rectify and improve the estimation made from depth cues.
+ChiTransformer adopts the recent Vision Transformer (ViT) as backbone and extends the encoder-only transformer to an encoder-decoder structure similar to
+the ones for natural language processing.
+The architecture is shown in figure (\ref{fig:chi}).
+\begin{figure}[h]
+    \includegraphics[width=0.9\textwidth]{Chi.png}
+    \caption{ChiTransformer Architecture}
+    \label{fig:chi}
+\end{figure}
 \printbibliography
 \end{document} 

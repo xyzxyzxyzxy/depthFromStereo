@@ -19,6 +19,35 @@
 
 \refsection{0}
   \datalist[entry]{nty/global//global/global}
+    \entry{chitransformer}{inproceedings}{}
+      \name{author}{2}{}{%
+        {{hash=5019a3fd93e842fb4a434446dc1ad195}{%
+           family={Su},
+           familyi={S\bibinitperiod},
+           given={Qing},
+           giveni={Q\bibinitperiod}}}%
+        {{hash=b340171a83909b667166c95e4c8b890b}{%
+           family={Ji},
+           familyi={J\bibinitperiod},
+           given={Shihao},
+           giveni={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{2a215be0af3893e40464ca89bade0795}
+      \strng{fullhash}{2a215be0af3893e40464ca89bade0795}
+      \strng{bibnamehash}{2a215be0af3893e40464ca89bade0795}
+      \strng{authorbibnamehash}{2a215be0af3893e40464ca89bade0795}
+      \strng{authornamehash}{2a215be0af3893e40464ca89bade0795}
+      \strng{authorfullhash}{2a215be0af3893e40464ca89bade0795}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}
+      \field{title}{ChiTransformer: Towards Reliable Stereo from Cues}
+      \field{year}{2022}
+      \field{pages}{1939\bibrangedash 1949}
+      \range{pages}{11}
+    \endentry
     \entry{calibration}{article}{}
       \name{author}{1}{}{%
         {{hash=5ee5d3d5470ac29a2e7c8df70ed54725}{%

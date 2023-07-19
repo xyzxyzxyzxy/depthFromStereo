@@ -129,8 +129,8 @@ assert stereo[0].shape == stereo[1].shape, msg
 
 imleft = stereo[0]
 imright = stereo[1]
-imright_color = stereo_color[0]
-imleft_color = stereo_color[1]
+imleft_color = stereo_color[0]
+imright_color = stereo_color[1]
 
 h, w = imright.shape #new height and with after undistortion
 
