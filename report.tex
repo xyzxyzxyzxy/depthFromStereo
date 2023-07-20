@@ -96,7 +96,7 @@ A second and more efficient solution is to use the \textbf{FLANN-based matcher}.
 this leads to a dramatic improvement in speed. To filter matches Lowe's ratio test is used, which measures the distance ratio between the two nearest matches of any considered
 keypoint, it is considered a good match when this value is below a threshold (often fixed between 0.7 and 0.8).
 \\
-An alternative approach to find matches is to select them manually in both images, this approach can be time-consuming and does not allow finding a high number of matching points.
+An alternative approach to find matches is to select them manually in both images, this approach can be time consuming and does not allow to find a high number of matching points.
 The following steps in the pipeline work best with a high number of matches found on multiple planes in the two views so this solution can be used in cases in which the automatic approach 
 finds a high number of wrong matches. (e.g. images with repeating patterns, vast solid color areas).
 \subsection{Fundamental matrix estimation}
@@ -106,7 +106,7 @@ The Fundamental matrix is used to derive the Essential matrix containing pose in
 The epipolar constraint is a geometrical constraint that can be written as:
 \[[p_2; 1]^T K^{-T} E K^{-1} [p_1; 1] = 0\]
 where \(E\) is an essential matrix, \(p_1\) and \(p_2\) are corresponding points in the first and the second images respectively,
-and \(K\) are the intrinsic parameter matrices of the two cameras (in this setup they are identical since stereo pair is acquired with the same camera).
+and \(K\) are the intrinsic parameter matrices of the two cameras (in this setup they are identical since stereo pair is acquired with same camera).
 \\
 We know that: 
 \[F = K^{-T} E K^{-1}\]
@@ -117,7 +117,7 @@ To do so the implementation chosen (OpenCV) uses \textbf{Random Sample Consensus
 found in earlier stages.\\
 After estimating F it is easy to derive \(E\) and since we know that \(E = R[T_x]\) (where \([T_x]\) denotes the skew-symmetric matrix such that \([T_x]x = t \times x \) is the cross-product of the vectors t and x).
 we can derive pose information through \textbf{Singular Value Decomposition} (SVD) on the Essential matrix.
-The accuracy of this entire procedure, estimating the pose of one camera with respect to the other heavily depends on the accuracy of the initial calibration procedure and
+The accuracy of this entire procedure estimating the pose of one camera with respect to the other heavily depends on the accuracy of the initial calibration procedure and
 the quality and number of correspondences found in the two images.
 \subsection{Dense correspondence}
 We know from epipolar geometry that the projection of a scene point onto the first image generates a \textit{line} on the other image plane where the corresponding point must lie.
@@ -226,68 +226,11 @@ approach fuses the two prevalent methodologies in deep learning based depth esti
 Stereo information can be injected into the MDE process to rectify and improve the estimation made from depth cues.
 ChiTransformer adopts the recent Vision Transformer (ViT) as backbone and extends the encoder-only transformer to an encoder-decoder structure similar to
 the ones for natural language processing.
-The architecture shown in figure (\ref{fig:chi}) utilizes a pair of hybrid vision transformers with ResNet-50 for patch embedding. 
-The ResNet-50 parameters are shared to ensure consistency in representations. 
-Image patch embeddings are projected to 768 dimensions, flattened, and combined with positional embeddings before being fed into attention blocks. 
-The attention block design follows a specific pattern for the reference view (right) and the master view (left), 
-involving self-attention (SA) and cross-attention (CA) layers. 
-The output tokens from the master view are then reassembled into an image-like arrangement.
-The multiple SA layers serve to incorporate complex context information progressively into the encodings.
-The cross-attention (CA) layer enables stereopsis by fusing depth cues from the two views.
-The fusion block in the model follows a four-step process to reassemble the output of attention layers into an image-like arrangement. 
-This involves concatenating the class token with other tokens, projecting them to a specific dimension, reshaping them into a 2D shape, and then resampling them to different scales. 
-The reassembled feature maps from different levels are fused together using a customized feature fusion block, 
-resulting in an up-sampled depth estimation map that matches the original resolution of the input images.
+The architecture is shown in figure (\ref{fig:chi}).
 \begin{figure}[h]
     \includegraphics[width=0.9\textwidth]{Chi.png}
     \caption{ChiTransformer Architecture}
     \label{fig:chi}
 \end{figure}
-\\
-The following figures show the results obtained using ChiTransformer and the purely geometric approach for the same
-pair of \textit{unrectified} input images. The images are taken from a sequence from the KITTI vision benchmark dataset \cite{Geiger2013IJRR}.
-\begin{figure}[h]
-    \centering
-    \begin{subfigure}{.5\textwidth}
-      \centering
-      \includegraphics[width=0.98\linewidth]{L000.png}
-      \caption{Left view}
-      \label{fig:0left}
-    \end{subfigure}%
-    \begin{subfigure}{.5\textwidth}
-      \centering
-      \includegraphics[width=0.98\linewidth]{R000.png}
-      \caption{Right view}
-      \label{fig:0right}
-    \end{subfigure}
-    \caption{KITTI Stereo pair}
-    \label{fig:kitti}
-\end{figure}
-\begin{figure}[h]
-    \centering
-    \begin{subfigure}{.5\textwidth}
-      \centering
-      \includegraphics[width=0.95\linewidth]{mydisp.png}
-      \caption{Disparity}
-      \label{fig:mydepth}
-    \end{subfigure}%
-    \begin{subfigure}{.5\textwidth}
-      \centering
-      \includegraphics[width=\linewidth]{chidepth.png}
-      \caption{Depth using ChiTransformer}
-      \label{fig:kittidepth}
-    \end{subfigure}
-    \caption{Disparity and depth}
-    \label{fig:comparison}
-\end{figure}
-\\
-The disparity computed using epipolar geometry follows the approach explained in the sections above, with the difference that all the parameters 
-- intrinsic camera matrix, and pose information (Rotation and translation) - are taken from the dataset's calibration file. 
-This allows for a more precise disparity map computation having all the exact information required to rectify the two views correctly.
-As can be seen from the figure (\ref{fig:mydepth}) the disparity is not as smooth as the depth computed by the ChiTransformer network,
-it shows speckles and holes in many points, that will create inaccuracies in the depth reconstruction. 
-However, the structure of the overall scene - albeit approximately - is reproduced correctly.
-It is important to mention that given that all stereoBM parameters are fixed, the computation of the disparity map using the epipolar geometry approach is much less
-computationally expensive than running the ChiTransformer network in inference mode, even for just a pair of images.
 \printbibliography
 \end{document} 
