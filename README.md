@@ -3,8 +3,10 @@ Reconstructs a point cloud from stereo images acquired with the same **calibrate
 Note that the accuracy of this approach HEAVILY depends on the keypoints found and their matching. That is used to estimate the Fundamental matrix containing all the parameters needed to know the position of one camera with respect to the other.\
 It works better with scenes with a high number of distinct features positioned on different planes.
 
-#### Example of the reconstructed point cloud using stereo pair and calibration parameters from KITTI dataset
+#### Example of the reconstructed point clouds using stereo pair and calibration parameters from KITTI dataset
 ![Alt Text](depth.gif "Reconstructed point cloud from KITTI dataset sample stereo pair")
+
+<img src="depth2.gif" alt= “” width="60%" height="60%" title="Reconstructed point cloud from KITTI dataset sample stereo pair">
 
 #### Disparity map computed from stereo pair
 <img src="KITTIdepth.png" alt= “” width="70%" height="70%" title="Disparity map extracted from KITTI dataset sample">
